@@ -5,6 +5,9 @@
 #include <map>
 #include "raylib.h"
 
+//Si no encuentra Raylib: Proyecto --> Propiedades --> General --> Poner carpeta de includes
+//Si no encuentra Raylib: Proyecto --> Propiedades --> Vinculadores --> Poner carpeta de .lib
+
 using namespace std;
 
 //Control Vars
@@ -22,6 +25,9 @@ int m_objWidth = 0, m_objHeight = 0;
 string** m_background;
 string** m_foreground;
 string** m_objects;
+
+Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+float cubeSize[3] = { 2.0f, 2.0f, 2.0f }; //Width Height Length
 
 void ImportFile() {
 	ifstream file("level.sus", ios::in);
@@ -187,19 +193,17 @@ int main(void) {
 	const int screenWidth = 800;
 	const int screenHeight = 450;
 
-	InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera mode");
+	InitWindow(screenWidth, screenHeight, m_title.c_str());
 
 	// Define the camera to look into our 3d world
 	Camera3D camera = { 0 };
-	camera.position = Vector3{ 0.0f, 10.0f, 10.0f };  // Camera position
+	camera.position = Vector3{ 0.0f, 16.0f, 16.0f };  // Camera position
 	camera.target = Vector3{ 0.0f, 0.0f, 0.0f };      // Camera looking at point
 	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
 	camera.fovy = 45.0f;                                // Camera field-of-view Y
 	camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
 
-	Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
-
-	SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+	SetTargetFPS(120);               // Set our game to run at 60 frames-per-second
 	//--------------------------------------------------------------------------------------
 
 	// Main game loop
@@ -218,19 +222,35 @@ int main(void) {
 
 		BeginMode3D(camera);
 
-		DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
-		DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
+		//Draw Background
+		for (int i = 0; i < m_bgHeight; i++) {
+			for (int j = 0; j < m_bgWidth; j++) {
+				cubePosition = { (float)j * 2 - m_bgHeight ,0.0f, (float)i * 2 - m_bgWidth };
+				if (m_background[i][j] == "C") { DrawCube(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], GREEN); }
+				if (m_background[i][j] == "V") { DrawCube(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], DARKGREEN); }
+				DrawCubeWires(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], MAROON);
+			}
+		}
+		//Draw Foreground
+		for (int i = 0; i < m_fgHeight; i++) {
+			for (int j = 0; j < m_fgWidth; j++) {
+				cubePosition = { (float)j * 2 - m_fgHeight ,2.0f, (float)i * 2 - m_fgWidth };
+				if (m_foreground[i][j] == "P") { DrawCube(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], GRAY); }
+				if (m_foreground[i][j] == "T") { DrawCube(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], BROWN); }
+				//DrawCubeWires(cubePosition, cubeSize[0], cubeSize[1], cubeSize[2], MAROON);
+			}
+		}
 
-		DrawGrid(10, 1.0f);
+		//Draw Grid
+		if (m_bgHeight > m_bgWidth) { DrawGrid(m_bgHeight+1, 2.0f); }
+		else { DrawGrid(m_bgWidth+1, 2.0f); }
 
 		EndMode3D();
 
-		DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
-
+		DrawText("Bomb them!!", 10, 40, 20, DARKGRAY);
 		DrawFPS(10, 10);
 
 		EndDrawing();
-		//----------------------------------------------------------------------------------
 	}
 
 	// De-Initialization
