@@ -10,10 +10,8 @@
 
 using namespace std;
 
-//Control Vars
-const float m_version = 0.2f;
-
 //Game Vars 
+const float m_version = 0.2f;
 string m_title = "none :'(";
 int m_texturesNum = 0;
 map<string, string> m_textures;
@@ -33,10 +31,38 @@ float m_offsetX, m_offsetZ;
 Vector3 m_drawPosition = { 0.0f, 0.0f, 0.0f };
 float cubeSize[3] = { 1.0f, 1.0f, 1.0f }; //Width Height Length
 
-//Player
-Vector3 m_player1Pos = { 0, 1, 0 };
-bool m_bombPlaced = false;
+//Bombs
+struct Bombs
+{
+	int posX = 0, posZ = 0;
+	float time = 150.0f;
+};
 
+//Player
+struct Player
+{
+	string playerNum = "0";
+	int posX = 0, posZ = 0;
+	Color color = WHITE;
+
+	int num_bombs = 0, max_bombs = 2;
+	vector<Bombs> bombs;
+	bool m_hasBombDown = false;
+};
+vector<Player> m_players;
+
+bool isPassable(int x, int y) {
+	return m_objects[x][y] == "0";
+}
+bool isPlayer(string num) {
+	return num == "1" || num == "2" || num == "3" || num == "4";
+}
+bool canPlaceBomb(Player player) {
+	return player.num_bombs < player.max_bombs;
+}
+
+
+//Import Functions
 void ImportFile() {
 	ifstream file("level.sus", ios::in);
 	if (!file.is_open()) {
@@ -193,7 +219,6 @@ void ImportFile() {
 
 	file.close();
 }
-
 void LoadTextures() {
 	cout << "\nTextures Loaded:" << endl;
 	map<string, string>::iterator it;
@@ -202,7 +227,26 @@ void LoadTextures() {
 		m_textures2D[it->first]= LoadTextureFromImage(LoadImage(it->second.c_str()));
 	}
 }
+void Initplayers() {
+	for (int i = 0; i < m_objHeight; i++) {
+		for (int j = 0; j < m_objWidth; j++) {
+			if (isPlayer(m_objects[i][j])) {
+				Player player;
+				player.playerNum = m_objects[i][j];
+				player.posX = i;
+				player.posZ = j;
+				if (m_objects[i][j] == "1") { player.color = WHITE; }
+				if (m_objects[i][j] == "2") { player.color = YELLOW; }
+				if (m_objects[i][j] == "3") { player.color = RED; }
+				if (m_objects[i][j] == "4") { player.color = BLUE; }
 
+				m_players.push_back(player);
+			}
+		}
+	}
+}
+
+//Draw Functions
 void DrawLevel() {
 	//Draw Background
 	for (int i = 0; i < m_bgHeight; i++) {
@@ -235,23 +279,23 @@ void DrawObjects() {
 		for (int j = 0; j < m_objWidth; j++) {
 			m_drawPosition = { (float)j + (-m_offsetX + m_marginX) ,1.0f, (float)i + (-m_offsetZ + m_marginZ) };
 
-			if (m_objects[i][j] == "1") {
-				m_player1Pos = { (float)i ,1, (float)j };
-				DrawSphere(m_drawPosition, cubeSize[0] / 2, WHITE);
-			}
-			if (m_objects[i][j] == "2") {
-				DrawSphere(m_drawPosition, cubeSize[0] / 2, YELLOW);
-			}
-			else if (m_objects[i][j] == "3") {
-				DrawSphere(m_drawPosition, cubeSize[0] / 2, RED);
-			}
-			else if (m_objects[i][j] == "4") {
-				DrawSphere(m_drawPosition, cubeSize[0] / 2, BLUE);
+			if (isPlayer(m_objects[i][j])) {
+				m_players[stoi(m_objects[i][j])-1].posX = i;
+				m_players[stoi(m_objects[i][j]) - 1].posZ = j;
+
+				DrawSphere(m_drawPosition, cubeSize[0] / 2, m_players[stoi(m_objects[i][j]) - 1].color);
 			}
 
 			if (m_objects[i][j] == "B") {
-				if (!m_bombPlaced) { DrawSphere(m_drawPosition, cubeSize[0] / 3.0f, BLACK); }
-				else { DrawCubeWires(m_drawPosition, cubeSize[0], cubeSize[1], cubeSize[2], BLACK); }
+				bool drawBomb = true;
+				for (int k = 0; k < m_players.size(); k++) {
+					if (m_players[k].posX == i && m_players[k].posZ == j) 
+					{ 
+						drawBomb = false; 
+						DrawSphere(m_drawPosition, cubeSize[0] / 2, m_players[k].color);
+					}
+				}
+				if(drawBomb) { DrawSphere(m_drawPosition, cubeSize[0] / 3.0f, BLACK); }
 			}
 		}
 	}
@@ -261,35 +305,68 @@ void PlayerMovement() {
 	//OPPOSITE AXIS
 	//HEIGHT IS X AXIS and WIDTH IS Z AXIS
 
+#pragma region Player 1
 	//RIGHT
-	if (IsKeyPressed(KEY_RIGHT) && m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z + 1] == "0") {
-		if (!m_bombPlaced) { m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z] = "0"; }
-		m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z + 1] = "1";
-		m_bombPlaced = false;
+	if (IsKeyPressed(KEY_RIGHT) && isPassable(m_players[0].posX, m_players[0].posZ + 1)) {
+		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
+		m_objects[m_players[0].posX][m_players[0].posZ + 1] = "1";
+		m_players[0].m_hasBombDown = false;
 	}
 	//LEFT
-	else if (IsKeyPressed(KEY_LEFT) && m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z - 1] == "0") {
-		if (!m_bombPlaced) { m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z] = "0"; }
-		m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z - 1] = "1";
-		m_bombPlaced = false;
+	else if (IsKeyPressed(KEY_LEFT) && isPassable(m_players[0].posX, m_players[0].posZ - 1)) {
+		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
+		m_objects[m_players[0].posX][m_players[0].posZ - 1] = "1";
+		m_players[0].m_hasBombDown = false;
 	}
 	//UP
-	else if (IsKeyPressed(KEY_UP) && m_objects[(int)m_player1Pos.x - 1][(int)m_player1Pos.z] == "0") {
-		if (!m_bombPlaced) { m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z] = "0"; }
-		m_objects[(int)m_player1Pos.x - 1][(int)m_player1Pos.z] = "1";
-		m_bombPlaced = false;
+	else if (IsKeyPressed(KEY_UP) && isPassable(m_players[0].posX - 1, m_players[0].posZ)) {
+		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
+		m_objects[m_players[0].posX - 1][m_players[0].posZ] = "1";
+		m_players[0].m_hasBombDown = false;
 	}
 	//DOWN
-	else if (IsKeyPressed(KEY_DOWN) && m_objects[(int)m_player1Pos.x + 1][(int)m_player1Pos.z] == "0") {
-		if (!m_bombPlaced) { m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z] = "0"; }
-		m_objects[(int)m_player1Pos.x + 1][(int)m_player1Pos.z] = "1";
-		m_bombPlaced = false;
+	else if (IsKeyPressed(KEY_DOWN) && isPassable(m_players[0].posX + 1, m_players[0].posZ)) {
+		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
+		m_objects[m_players[0].posX + 1][m_players[0].posZ] = "1";
+		m_players[0].m_hasBombDown = false;
 	}
+#pragma endregion
 }
 void BombPlacement() {
-	if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
-		m_objects[(int)m_player1Pos.x][(int)m_player1Pos.z] = "B";
-		m_bombPlaced = true;
+#pragma region Player1
+	if (IsKeyPressed(KEY_RIGHT_CONTROL) && canPlaceBomb(m_players[0])) {
+		m_objects[m_players[0].posX][m_players[0].posZ] = "B";
+		m_players[0].m_hasBombDown = true;
+
+		Bombs bomb;
+		bomb.posX = m_players[0].posX;
+		bomb.posZ = m_players[0].posZ;
+		m_players[0].bombs.push_back(bomb);
+		m_players[0].num_bombs = m_players[0].bombs.size();
+	}
+#pragma endregion
+}
+void BombTimer() {
+	for (int i = 0; i < m_players.size(); i++)
+	{
+		for (int j = 0; j < m_players[i].bombs.size(); j++) {
+			m_players[i].bombs[j].time--;
+
+			if (m_players[i].bombs[j].time <= 0) {
+				if (m_players[i].bombs[j].posX == m_players[i].posX && m_players[i].bombs[j].posZ == m_players[i].posZ) {
+					m_objects[m_players[i].posX][m_players[i].posZ] = m_players[i].playerNum;
+					m_players[i].m_hasBombDown = false;
+				}
+				else
+				{
+					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
+				}
+
+				m_players[i].bombs.erase(m_players[i].bombs.begin());
+				m_players[i].num_bombs = m_players[i].bombs.size();
+				cout << "BOOM" << endl;
+			}
+		}
 	}
 }
 
@@ -308,6 +385,7 @@ int main(void) {
 
 	InitWindow(screenWidth, screenHeight, m_title.c_str());
 	LoadTextures();
+	Initplayers();
 
 	//Define the camera to look into our 3d world
 	Camera3D camera = { 0 };
@@ -326,7 +404,10 @@ int main(void) {
 
 		//Variables Update
 		PlayerMovement();
+
 		BombPlacement();
+		BombTimer();
+		cout << m_players[0].m_hasBombDown << endl;
 
 		//Draw Things
 		BeginDrawing();
