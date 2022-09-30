@@ -41,6 +41,7 @@ struct Bombs
 //Player
 struct Player
 {
+	bool alive = true;
 	string playerNum = "0";
 	int posX = 0, posZ = 0;
 	Color color = WHITE;
@@ -51,6 +52,9 @@ struct Player
 };
 vector<Player> m_players;
 
+bool isAlive(int player) {
+	return m_players[player].alive;
+}
 bool isPassable(int x, int y) {
 	return m_objects[x][y] == "0";
 }
@@ -301,50 +305,46 @@ void DrawObjects() {
 	}
 }
 
-void PlayerMovement() {
+void PlayerMovement(KeyboardKey up,KeyboardKey down, KeyboardKey right, KeyboardKey left, int player) {
 	//OPPOSITE AXIS
 	//HEIGHT IS X AXIS and WIDTH IS Z AXIS
 
-#pragma region Player 1
 	//RIGHT
-	if (IsKeyPressed(KEY_RIGHT) && isPassable(m_players[0].posX, m_players[0].posZ + 1)) {
-		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
-		m_objects[m_players[0].posX][m_players[0].posZ + 1] = "1";
-		m_players[0].m_hasBombDown = false;
+	if (IsKeyPressed(right) && isPassable(m_players[player].posX, m_players[player].posZ + 1)) {
+		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		m_objects[m_players[player].posX][m_players[player].posZ + 1] = m_players[player].playerNum;
+		m_players[player].m_hasBombDown = false;
 	}
 	//LEFT
-	else if (IsKeyPressed(KEY_LEFT) && isPassable(m_players[0].posX, m_players[0].posZ - 1)) {
-		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
-		m_objects[m_players[0].posX][m_players[0].posZ - 1] = "1";
-		m_players[0].m_hasBombDown = false;
+	else if (IsKeyPressed(left) && isPassable(m_players[player].posX, m_players[player].posZ - 1)) {
+		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		m_objects[m_players[player].posX][m_players[player].posZ - 1] = m_players[player].playerNum;
+		m_players[player].m_hasBombDown = false;
 	}
 	//UP
-	else if (IsKeyPressed(KEY_UP) && isPassable(m_players[0].posX - 1, m_players[0].posZ)) {
-		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
-		m_objects[m_players[0].posX - 1][m_players[0].posZ] = "1";
-		m_players[0].m_hasBombDown = false;
+	else if (IsKeyPressed(up) && isPassable(m_players[player].posX - 1, m_players[player].posZ)) {
+		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		m_objects[m_players[player].posX - 1][m_players[player].posZ] = m_players[player].playerNum;
+		m_players[player].m_hasBombDown = false;
 	}
 	//DOWN
-	else if (IsKeyPressed(KEY_DOWN) && isPassable(m_players[0].posX + 1, m_players[0].posZ)) {
-		if (!m_players[0].m_hasBombDown) { m_objects[m_players[0].posX][m_players[0].posZ] = "0"; }
-		m_objects[m_players[0].posX + 1][m_players[0].posZ] = "1";
-		m_players[0].m_hasBombDown = false;
+	else if (IsKeyPressed(down) && isPassable(m_players[player].posX + 1, m_players[player].posZ)) {
+		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		m_objects[m_players[player].posX + 1][m_players[player].posZ] = m_players[player].playerNum;
+		m_players[player].m_hasBombDown = false;
 	}
-#pragma endregion
 }
-void BombPlacement() {
-#pragma region Player1
-	if (IsKeyPressed(KEY_RIGHT_CONTROL) && canPlaceBomb(m_players[0])) {
-		m_objects[m_players[0].posX][m_players[0].posZ] = "B";
-		m_players[0].m_hasBombDown = true;
+void BombPlacement(KeyboardKey attack,int player ) {
+	if (IsKeyPressed(attack) && canPlaceBomb(m_players[player])) {
+		m_objects[m_players[player].posX][m_players[player].posZ] = "B";
+		m_players[player].m_hasBombDown = true;
 
 		Bombs bomb;
-		bomb.posX = m_players[0].posX;
-		bomb.posZ = m_players[0].posZ;
-		m_players[0].bombs.push_back(bomb);
-		m_players[0].num_bombs = m_players[0].bombs.size();
+		bomb.posX = m_players[player].posX;
+		bomb.posZ = m_players[player].posZ;
+		m_players[player].bombs.push_back(bomb);
+		m_players[player].num_bombs = m_players[player].bombs.size();
 	}
-#pragma endregion
 }
 void BombTimer() {
 	for (int i = 0; i < m_players.size(); i++)
@@ -401,13 +401,12 @@ int main(void) {
 	while (!WindowShouldClose())    //Detect window close button or ESC key
 	{
 		//Update
+		if (isAlive(0)) { PlayerMovement(KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, 0); }
+		if (isAlive(1)) { PlayerMovement(KEY_W, KEY_S, KEY_D, KEY_A, 1); }
 
-		//Variables Update
-		PlayerMovement();
-
-		BombPlacement();
+		BombPlacement(KEY_RIGHT_CONTROL, 0);
+		BombPlacement(KEY_SPACE, 1);
 		BombTimer();
-		cout << m_players[0].m_hasBombDown << endl;
 
 		//Draw Things
 		BeginDrawing();
