@@ -55,11 +55,17 @@ vector<Player> m_players;
 bool isAlive(int player) {
 	return m_players[player].alive;
 }
-bool isPassable(int x, int y) {
+bool isPassableObject(int x, int y) {
 	return m_objects[x][y] == "0";
+}
+bool canBreakBlock(int x, int y) {
+	return m_objects[x][y] != "X" && m_objects[x][y] != "B";
 }
 bool isPlayer(string num) {
 	return num == "1" || num == "2" || num == "3" || num == "4";
+}
+int getPlayer(int x, int y) {
+	return stoi(m_objects[x][y]) - 1;
 }
 bool canPlaceBomb(Player player) {
 	return player.num_bombs < player.max_bombs;
@@ -287,7 +293,9 @@ void DrawObjects() {
 				m_players[stoi(m_objects[i][j])-1].posX = i;
 				m_players[stoi(m_objects[i][j]) - 1].posZ = j;
 
-				DrawSphere(m_drawPosition, cubeSize[0] / 2, m_players[stoi(m_objects[i][j]) - 1].color);
+				if (m_players[stoi(m_objects[i][j]) - 1].alive) {
+					DrawSphere(m_drawPosition, cubeSize[0] / 2, m_players[stoi(m_objects[i][j]) - 1].color);
+				}
 			}
 
 			if (m_objects[i][j] == "B") {
@@ -310,32 +318,32 @@ void PlayerMovement(KeyboardKey up,KeyboardKey down, KeyboardKey right, Keyboard
 	//HEIGHT IS X AXIS and WIDTH IS Z AXIS
 
 	//RIGHT
-	if (IsKeyPressed(right) && isPassable(m_players[player].posX, m_players[player].posZ + 1)) {
+	if (IsKeyPressed(right) && isPassableObject(m_players[player].posX, m_players[player].posZ + 1)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		m_objects[m_players[player].posX][m_players[player].posZ + 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//LEFT
-	else if (IsKeyPressed(left) && isPassable(m_players[player].posX, m_players[player].posZ - 1)) {
+	else if (IsKeyPressed(left) && isPassableObject(m_players[player].posX, m_players[player].posZ - 1)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		m_objects[m_players[player].posX][m_players[player].posZ - 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//UP
-	else if (IsKeyPressed(up) && isPassable(m_players[player].posX - 1, m_players[player].posZ)) {
+	else if (IsKeyPressed(up) && isPassableObject(m_players[player].posX - 1, m_players[player].posZ)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		m_objects[m_players[player].posX - 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//DOWN
-	else if (IsKeyPressed(down) && isPassable(m_players[player].posX + 1, m_players[player].posZ)) {
+	else if (IsKeyPressed(down) && isPassableObject(m_players[player].posX + 1, m_players[player].posZ)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		m_objects[m_players[player].posX + 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 }
-void BombPlacement(KeyboardKey attack,int player ) {
-	if (IsKeyPressed(attack) && canPlaceBomb(m_players[player])) {
+void BombPlacement(KeyboardKey attack, int player) {
+	if (IsKeyPressed(attack) && canPlaceBomb(m_players[player]) && m_players[player].alive) {
 		m_objects[m_players[player].posX][m_players[player].posZ] = "B";
 		m_players[player].m_hasBombDown = true;
 
@@ -352,16 +360,51 @@ void BombTimer() {
 		for (int j = 0; j < m_players[i].bombs.size(); j++) {
 			m_players[i].bombs[j].time--;
 
-			if (m_players[i].bombs[j].time <= 0) {
-				if (m_players[i].bombs[j].posX == m_players[i].posX && m_players[i].bombs[j].posZ == m_players[i].posZ) {
-					m_objects[m_players[i].posX][m_players[i].posZ] = m_players[i].playerNum;
-					m_players[i].m_hasBombDown = false;
+			if (m_players[i].bombs[j].time <= 0.0f) {
+				//Destoy objects
+				m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
+				//Down
+				if (canBreakBlock(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)) {
+					if (!isPlayer(m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ])) {
+						m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
+						m_foreground[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
+					}
+					else { //Player Down
+						m_players[getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)].alive = false;
+					}
 				}
-				else
-				{
-					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
+				//Up
+				if (canBreakBlock(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)) {
+					if (!isPlayer(m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ])) {
+						m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
+						m_foreground[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
+					}
+					else { //Player Up
+						m_players[getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)].alive = false;
+					}
+				}
+				//Right
+				if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)) {
+					if (!isPlayer(m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1])) {
+						m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
+						m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
+					}
+					else { //Player Right
+						m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)].alive = false;
+					}
+				}
+				//Left
+				if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)) {
+					if (!isPlayer(m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1])) {
+						m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+						m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+					}
+					else { //Player Left
+						m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)].alive = false;
+					}
 				}
 
+				//Delete Bomb
 				m_players[i].bombs.erase(m_players[i].bombs.begin());
 				m_players[i].num_bombs = m_players[i].bombs.size();
 				cout << "BOOM" << endl;
