@@ -5,17 +5,21 @@
 #include <map>
 #include "raylib.h"
 
-//Si no encuentra Raylib: Proyecto --> Propiedades --> General --> Poner carpeta de includes
-//Si no encuentra Raylib: Proyecto --> Propiedades --> Vinculadores --> Poner carpeta de .lib
+//Si no encuentra Raylib: Proyecto --> Propiedades --> General --> Poner path de carpeta de includes
+//Si no encuentra Raylib: Proyecto --> Propiedades --> Vinculadores --> Poner path de carpeta de .lib
 
 using namespace std;
 
 //Game Vars 
-const float m_version = 0.2f;
+const float m_version = 0.5f;
+float m_gameVersion = 0.0f;
 string m_title = "none :'(";
 int m_texturesNum = 0;
 map<string, string> m_textures;
 map<string, Texture2D> m_textures2D;
+Music m_bgMusic;
+bool GameOver;
+string m_winner = "";
 
 //Map
 int m_bgWidth = 0, m_bgHeight = 0;
@@ -37,7 +41,12 @@ struct Bombs
 	int posX = 0, posZ = 0;
 	float time = 150.0f;
 };
-
+//Power Up
+struct PowerUp
+{
+	int posX = 0, posZ = 0;
+	float time = 300.0f;
+};
 //Player
 struct Player
 {
@@ -49,9 +58,11 @@ struct Player
 	int num_bombs = 0, max_bombs = 2;
 	vector<Bombs> bombs;
 	bool m_hasBombDown = false;
+	bool m_hasPowerUp = false;
 };
 vector<Player> m_players;
 
+//Utitities
 bool isAlive(int player) {
 	return m_players[player].alive;
 }
@@ -64,13 +75,16 @@ bool canBreakBlock(int x, int y) {
 bool isPlayer(string num) {
 	return num == "1" || num == "2" || num == "3" || num == "4";
 }
+bool isPwrUp(string pos) { return pos == "U"; }
 int getPlayer(int x, int y) {
 	return stoi(m_objects[x][y]) - 1;
 }
 bool canPlaceBomb(Player player) {
 	return player.num_bombs < player.max_bombs;
 }
-
+void DeadPlayerText(int player) {
+	cout << "Player " << player << " died." << endl;
+}
 
 //Import Functions
 void ImportFile() {
@@ -93,10 +107,10 @@ void ImportFile() {
 	cout << "\nExtension: " << line << endl;
 	//Version Control
 	getline(file, line, ';');
+	m_gameVersion = stof(line);
 	if (stof(line) < m_version) {
-		cout << "\n\nERROR <3>: Old version detected!, upgrade to " << m_version << "\n" << endl;
+		cout << "\n\nWARNING <3>: Old version detected!, upgrade to " << m_version << "\n" << endl;
 		system("pause");
-		exit(3);
 	}
 	cout << "Version: " << line << endl;
 	getline(file, line); // End Line
@@ -114,12 +128,27 @@ void ImportFile() {
 	cout << "Game Title: " << m_title << endl;
 	getline(file, line); // End Line
 
+	if (m_gameVersion >= 0.5f) {
+		//Music Control
+		getline(file, line, ';');
+		if (line != "MUSIC") {
+			cout << "\n\nERROR <5>: Music missing!\n" << endl;
+			system("pause");
+			exit(5);
+		}
+		//Set Music
+		getline(file, line, ';');
+		// TO DO
+		//cout << "BGMusic: " << MUSIC PATH << endl;
+		getline(file, line); // End Line
+	}
+
 	//Textures Control
 	getline(file, line, ';');
 	if (line != "TEXTURES") {
-		cout << "\n\nERROR <5>: Textures missing!\n" << endl;
+		cout << "\n\nERROR <6>: Textures missing!\n" << endl;
 		system("pause");
-		exit(5);
+		exit(6);
 	}
 	//Set Textures number
 	getline(file, line, ';');
@@ -142,9 +171,9 @@ void ImportFile() {
 	//Background Control
 	getline(file, line, ';');
 	if (line != "BACKGROUND") {
-		cout << "\n\nERROR <6>: Background missing!\n" << endl;
+		cout << "\n\nERROR <7>: Background missing!\n" << endl;
 		system("pause");
-		exit(6);
+		exit(7);
 	}
 	//Set Backrgound size
 	getline(file, line, ';');
@@ -171,9 +200,9 @@ void ImportFile() {
 	//Foreground Control
 	getline(file, line, ';');
 	if (line != "FOREGROUND") {
-		cout << "\n\nERROR <7>: Foreground missing!\n" << endl;
+		cout << "\n\nERROR <8>: Foreground missing!\n" << endl;
 		system("pause");
-		exit(7);
+		exit(8);
 	}
 	//Set Forergound size
 	getline(file, line, ';');
@@ -200,9 +229,9 @@ void ImportFile() {
 	//Objects Control
 	getline(file, line, ';');
 	if (line != "OBJECTS") {
-		cout << "\n\nERROR <8>: Objects missing!\n" << endl;
+		cout << "\n\nERROR <9>: Objects missing!\n" << endl;
 		system("pause");
-		exit(8);
+		exit(9);
 	}
 	//Set Objects size
 	getline(file, line, ';');
@@ -246,9 +275,9 @@ void Initplayers() {
 				player.posX = i;
 				player.posZ = j;
 				if (m_objects[i][j] == "1") { player.color = WHITE; }
-				if (m_objects[i][j] == "2") { player.color = YELLOW; }
-				if (m_objects[i][j] == "3") { player.color = RED; }
-				if (m_objects[i][j] == "4") { player.color = BLUE; }
+				if (m_objects[i][j] == "2") { player.color = GREEN; }
+				if (m_objects[i][j] == "3") { player.color = ORANGE; }
+				if (m_objects[i][j] == "4") { player.color = SKYBLUE; }
 
 				m_players.push_back(player);
 			}
@@ -261,11 +290,10 @@ void DrawLevel() {
 	//Draw Background
 	for (int i = 0; i < m_bgHeight; i++) {
 		for (int j = 0; j < m_bgWidth; j++) {
-			m_drawPosition = { (float)j +(-m_offsetX+m_marginX) ,0.0f, (float)i + (-m_offsetZ + m_marginZ) };
+			m_drawPosition = { (float)j + (-m_offsetX + m_marginX) ,0.0f, (float)i + (-m_offsetZ + m_marginZ) };
 
 			if (m_background[i][j] != "X") {
 				DrawCubeTexture(m_textures2D[m_background[i][j]], m_drawPosition, cubeSize[0], cubeSize[1], cubeSize[2], WHITE);
-				//DrawCubeWires(m_drawPosition, cubeSize[0], cubeSize[1], cubeSize[2], BLACK);
 			}
 		}
 	}
@@ -276,7 +304,6 @@ void DrawLevel() {
 
 			if (m_foreground[i][j] != "0") {
 				DrawCubeTexture(m_textures2D[m_foreground[i][j]], m_drawPosition, cubeSize[0], cubeSize[1], cubeSize[2], WHITE);
-				//DrawCubeWires(m_drawPosition, cubeSize[0], cubeSize[1], cubeSize[2], BLACK);
 			}
 		}
 	}
@@ -290,7 +317,7 @@ void DrawObjects() {
 			m_drawPosition = { (float)j + (-m_offsetX + m_marginX) ,1.0f, (float)i + (-m_offsetZ + m_marginZ) };
 
 			if (isPlayer(m_objects[i][j])) {
-				m_players[stoi(m_objects[i][j])-1].posX = i;
+				m_players[stoi(m_objects[i][j]) - 1].posX = i;
 				m_players[stoi(m_objects[i][j]) - 1].posZ = j;
 
 				if (m_players[stoi(m_objects[i][j]) - 1].alive) {
@@ -299,20 +326,16 @@ void DrawObjects() {
 			}
 
 			if (m_objects[i][j] == "B") {
-				bool drawBomb = true;
-				for (int k = 0; k < m_players.size(); k++) {
-					if (m_players[k].posX == i && m_players[k].posZ == j) 
-					{ 
-						drawBomb = false; 
-						DrawSphere(m_drawPosition, cubeSize[0] / 2, m_players[k].color);
-					}
-				}
-				if(drawBomb) { DrawSphere(m_drawPosition, cubeSize[0] / 3.0f, BLACK); }
+				DrawSphere(m_drawPosition, cubeSize[0] / 3.0f, BLACK);
+			}
+			if (m_objects[i][j] == "U") {
+				DrawSphere(m_drawPosition, cubeSize[0] / 2.0f, PINK);
 			}
 		}
 	}
 }
 
+//Gameflow
 void PlayerMovement(KeyboardKey up,KeyboardKey down, KeyboardKey right, KeyboardKey left, int player) {
 	//OPPOSITE AXIS
 	//HEIGHT IS X AXIS and WIDTH IS Z AXIS
@@ -320,31 +343,38 @@ void PlayerMovement(KeyboardKey up,KeyboardKey down, KeyboardKey right, Keyboard
 	//RIGHT
 	if (IsKeyPressed(right) && isPassableObject(m_players[player].posX, m_players[player].posZ + 1)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
+
 		m_objects[m_players[player].posX][m_players[player].posZ + 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//LEFT
 	else if (IsKeyPressed(left) && isPassableObject(m_players[player].posX, m_players[player].posZ - 1)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
+
 		m_objects[m_players[player].posX][m_players[player].posZ - 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//UP
 	else if (IsKeyPressed(up) && isPassableObject(m_players[player].posX - 1, m_players[player].posZ)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
+
 		m_objects[m_players[player].posX - 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//DOWN
 	else if (IsKeyPressed(down) && isPassableObject(m_players[player].posX + 1, m_players[player].posZ)) {
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
+		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
+
 		m_objects[m_players[player].posX + 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 }
 void BombPlacement(KeyboardKey attack, int player) {
 	if (IsKeyPressed(attack) && canPlaceBomb(m_players[player]) && m_players[player].alive) {
-		m_objects[m_players[player].posX][m_players[player].posZ] = "B";
 		m_players[player].m_hasBombDown = true;
 
 		Bombs bomb;
@@ -361,56 +391,92 @@ void BombTimer() {
 			m_players[i].bombs[j].time--;
 
 			if (m_players[i].bombs[j].time <= 0.0f) {
-				//Destoy objects
-				m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
 				//Down
-				if (canBreakBlock(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)) {
-					if (!isPlayer(m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ])) {
-						m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
-						m_foreground[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
-					}
-					else { //Player Down
-						m_players[getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)].alive = false;
-					}
+				string downPos = m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ];
+				if (isPlayer(downPos)) {
+					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ));
+
+					m_players[getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)].alive = false;
+					m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
+				}
+				else if (isPwrUp(downPos))
+				{
+					m_foreground[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
+					cout << "PowerUp found!";
+				}
+				else if (canBreakBlock(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)) {
+					m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
+					m_foreground[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
 				}
 				//Up
-				if (canBreakBlock(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)) {
-					if (!isPlayer(m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ])) {
-						m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
-						m_foreground[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
-					}
-					else { //Player Up
-						m_players[getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)].alive = false;
-					}
+				string upPos = m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ];
+				if (isPlayer(upPos)) {
+					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ));
+
+					m_players[getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)].alive = false;
+					m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
 				}
-				//Right
-				if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)) {
-					if (!isPlayer(m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1])) {
-						m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
-						m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
-					}
-					else { //Player Right
-						m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)].alive = false;
-					}
+				else if (isPwrUp(upPos))
+				{
+					m_foreground[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
+					cout << "PowerUp found!";
+				}
+				else if (canBreakBlock(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)) {
+					m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
+					m_foreground[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
 				}
 				//Left
-				if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)) {
-					if (!isPlayer(m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1])) {
-						m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
-						m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
-					}
-					else { //Player Left
-						m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)].alive = false;
-					}
+				string leftPos = m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ-1];
+				if (isPlayer(leftPos)) {
+					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1));
+
+					m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)].alive = false;
+					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+				}
+				else if (isPwrUp(leftPos))
+				{
+					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+					cout << "PowerUp found!";
+				}
+				else if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)) {
+					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
+				}
+				//Right
+				string rightPos = m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1];
+				if (isPlayer(rightPos)) {
+					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1));
+
+					m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)].alive = false;
+					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
+				}
+				else if (isPwrUp(rightPos))
+				{
+					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
+					cout << "PowerUp found!";
+				}
+				else if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)) {
+					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
+					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
 				}
 
 				//Delete Bomb
+				m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
 				m_players[i].bombs.erase(m_players[i].bombs.begin());
 				m_players[i].num_bombs = m_players[i].bombs.size();
-				cout << "BOOM" << endl;
+				cout << "BOOM!" << endl;
 			}
 		}
 	}
+}
+void WinCondition() {
+	float PlayersLeft = 0;
+	m_winner = "_";
+	for (int i = 0; i < m_players.size(); i++) {
+		if (m_players[i].alive) { PlayersLeft++; m_winner = m_players[i].playerNum; }
+	}
+
+	if (PlayersLeft <= 1) { GameOver = true; }
 }
 
 int main(void) {
@@ -444,25 +510,38 @@ int main(void) {
 	while (!WindowShouldClose())    //Detect window close button or ESC key
 	{
 		//Update
-		if (isAlive(0)) { PlayerMovement(KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, 0); }
-		if (isAlive(1)) { PlayerMovement(KEY_W, KEY_S, KEY_D, KEY_A, 1); }
+		if (!GameOver) { WinCondition(); }
 
 		BombPlacement(KEY_RIGHT_CONTROL, 0);
 		BombPlacement(KEY_SPACE, 1);
 		BombTimer();
 
+		if (isAlive(0)) { PlayerMovement(KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, 0); }
+		if (isAlive(1)) { PlayerMovement(KEY_W, KEY_S, KEY_D, KEY_A, 1); }
+
 		//Draw Things
 		BeginDrawing();
 
-		ClearBackground(RAYWHITE);
+		if (!GameOver) { ClearBackground(RAYWHITE); }
+		else { ClearBackground(DARKGRAY); }
 		BeginMode3D(camera);
 
-		DrawLevel();
-		DrawObjects();
+		if (!GameOver) {
+			DrawLevel();
+			DrawObjects();
+		}
 
 		EndMode3D();
-		DrawText("Bomb them!!", 10, 40, 20, DARKGRAY);
-		DrawFPS(10, 10);
+
+		if (!GameOver) {
+			DrawText("Bomb them!!", 10, 40, 20, DARKGRAY);
+			DrawFPS(10, 10);
+		}
+		else {
+			DrawText("Game Over!", screenWidth / 2.85f, screenHeight / 3.0f, 80, RED);
+			string winText = "Winner is: "+m_winner;
+			DrawText(winText.c_str(), screenWidth / 2.5f, screenHeight / 2.0f, 50, RED);
+		}
 
 		EndDrawing();
 	}
