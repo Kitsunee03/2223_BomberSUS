@@ -67,7 +67,7 @@ bool isAlive(int player) {
 	return m_players[player].alive;
 }
 bool isPassableObject(int x, int y) {
-	return m_objects[x][y] == "0";
+	return (m_objects[x][y] == "0" || m_objects[x][y] == "U") && m_foreground[x][y] != "T";
 }
 bool canBreakBlock(int x, int y) {
 	return m_objects[x][y] != "X" && m_objects[x][y] != "B";
@@ -75,7 +75,9 @@ bool canBreakBlock(int x, int y) {
 bool isPlayer(string num) {
 	return num == "1" || num == "2" || num == "3" || num == "4";
 }
-bool isPwrUp(string pos) { return pos == "U"; }
+bool isPwrUp(string pos) {
+	return pos == "U";
+}
 int getPlayer(int x, int y) {
 	return stoi(m_objects[x][y]) - 1;
 }
