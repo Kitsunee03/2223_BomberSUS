@@ -111,7 +111,7 @@ void ImportFile() {
 	getline(file, line, ';');
 	m_gameVersion = stof(line);
 	if (stof(line) < m_version) {
-		cout << "\n\nWARNING <3>: Old version detected!, upgrade to " << m_version << "\n" << endl;
+		cout << "\n\nWARNING <3>: Old version detected!, upgrade to " << m_version <<" to enjoy the newest features :)" << "\n" << endl;
 		system("pause");
 	}
 	cout << "Version: " << line << endl;
@@ -496,6 +496,10 @@ void BombTimer() {
 				}
 
 				//Delete Bomb
+				if (isPlayer(m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ])) {
+					DeadPlayerText(m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ)]);
+					m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ)].alive = false;
+				}
 				m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ] = "0";
 				m_players[i].bombs.erase(m_players[i].bombs.begin());
 				m_players[i].num_bombs = m_players[i].bombs.size();
@@ -555,7 +559,7 @@ int main(void) {
 	{
 		//Update
 		if (!GameOver) { WinCondition(); }
-		if (!IsSoundPlaying(m_bgMusic)) {	//BGM
+		if (!IsSoundPlaying(m_bgMusic) && m_version >= 0.5f) {	//BGM
 			PlaySound(m_bgMusic);
 		}
 
@@ -595,7 +599,8 @@ int main(void) {
 		EndDrawing();
 	}
 
-	UnloadSound(m_bgMusic);
+	//Unload music
+	if (m_version >= 0.5f) { UnloadSound(m_bgMusic); }
 
 	// De-Initialization
 	CloseAudioDevice();
