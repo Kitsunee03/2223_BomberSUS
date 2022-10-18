@@ -44,21 +44,21 @@ struct Bombs
 //Power Up
 struct PowerUp
 {
-	int posX = 0, posZ = 0;
-	float time = 300.0f;
+	float time = 0.0f;
+	const float maxTime = 300.0f;
 };
 //Player
 struct Player
 {
 	bool alive = true;
-	string playerNum = "0";
+	string playerNum = "1";
 	int posX = 0, posZ = 0;
 	Color color = WHITE;
 
 	int num_bombs = 0, max_bombs = 2;
 	vector<Bombs> bombs;
 	bool m_hasBombDown = false;
-	bool m_hasPowerUp = false;
+	PowerUp pwrUp;
 };
 vector<Player> m_players;
 
@@ -84,8 +84,8 @@ int getPlayer(int x, int y) {
 bool canPlaceBomb(Player player) {
 	return player.num_bombs < player.max_bombs;
 }
-void DeadPlayerText(int player) {
-	cout << "Player " << player << " died." << endl;
+void DeadPlayerText(Player player) {
+	cout << "Player " << player.playerNum << " died." << endl;
 }
 
 //Import Functions
@@ -276,10 +276,10 @@ void Initplayers() {
 				player.playerNum = m_objects[i][j];
 				player.posX = i;
 				player.posZ = j;
-				if (m_objects[i][j] == "1") { player.color = WHITE; }
-				if (m_objects[i][j] == "2") { player.color = GREEN; }
-				if (m_objects[i][j] == "3") { player.color = ORANGE; }
-				if (m_objects[i][j] == "4") { player.color = SKYBLUE; }
+				if (player.playerNum == "1") { player.color = WHITE; }
+				if (player.playerNum == "2") { player.color = GREEN; }
+				if (player.playerNum == "3") { player.color = ORANGE; }
+				if (player.playerNum == "4") { player.color = SKYBLUE; }
 
 				m_players.push_back(player);
 			}
@@ -344,33 +344,65 @@ void PlayerMovement(KeyboardKey up,KeyboardKey down, KeyboardKey right, Keyboard
 
 	//RIGHT
 	if (IsKeyPressed(right) && isPassableObject(m_players[player].posX, m_players[player].posZ + 1)) {
+		//Place Bomb
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
 
+		//Get power up
+		if(isPwrUp(m_objects[m_players[player].posX][m_players[player].posZ + 1])) {
+			m_players[player].pwrUp.time = m_players[player].pwrUp.maxTime;
+			cout << "Player: " << m_players[player].playerNum << " got a Power Up" << endl;
+		}
+
+		//Move
 		m_objects[m_players[player].posX][m_players[player].posZ + 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//LEFT
 	else if (IsKeyPressed(left) && isPassableObject(m_players[player].posX, m_players[player].posZ - 1)) {
+		//Place Bomb
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
 
+		//Get power up
+		if (isPwrUp(m_objects[m_players[player].posX][m_players[player].posZ - 1])) {
+			m_players[player].pwrUp.time = m_players[player].pwrUp.maxTime;
+			cout << "Player: " << m_players[player].playerNum << " got a Power Up" << endl;
+		}
+
+		//Move
 		m_objects[m_players[player].posX][m_players[player].posZ - 1] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//UP
 	else if (IsKeyPressed(up) && isPassableObject(m_players[player].posX - 1, m_players[player].posZ)) {
+		//Place Bomb
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
 
+		//Get power up
+		if (isPwrUp(m_objects[m_players[player].posX - 1][m_players[player].posZ])) {
+			m_players[player].pwrUp.time = m_players[player].pwrUp.maxTime;
+			cout << "Player: " << m_players[player].playerNum << " got a Power Up" << endl;
+		}
+
+		//Move
 		m_objects[m_players[player].posX - 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
 	//DOWN
 	else if (IsKeyPressed(down) && isPassableObject(m_players[player].posX + 1, m_players[player].posZ)) {
+		//Place Bomb
 		if (!m_players[player].m_hasBombDown) { m_objects[m_players[player].posX][m_players[player].posZ] = "0"; }
 		else { m_objects[m_players[player].posX][m_players[player].posZ] = "B"; }
 
+		//Get power up
+		if (isPwrUp(m_objects[m_players[player].posX + 1][m_players[player].posZ])) {
+			m_players[player].pwrUp.time = m_players[player].pwrUp.maxTime;
+			cout << "Player: " << m_players[player].playerNum << " got a Power Up" << endl;
+		}
+
+		//Move
 		m_objects[m_players[player].posX + 1][m_players[player].posZ] = m_players[player].playerNum;
 		m_players[player].m_hasBombDown = false;
 	}
@@ -396,7 +428,7 @@ void BombTimer() {
 				//Down
 				string downPos = m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ];
 				if (isPlayer(downPos)) {
-					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ));
+					DeadPlayerText(m_players[getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)]);
 
 					m_players[getPlayer(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)].alive = false;
 					m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
@@ -404,7 +436,7 @@ void BombTimer() {
 				else if (isPwrUp(downPos))
 				{
 					m_foreground[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
-					cout << "PowerUp found!";
+					cout << "PowerUp found!"<<endl;
 				}
 				else if (canBreakBlock(m_players[i].bombs[j].posX + 1, m_players[i].bombs[j].posZ)) {
 					m_objects[m_players[i].bombs[j].posX + 1][m_players[i].bombs[j].posZ] = "0";
@@ -413,7 +445,7 @@ void BombTimer() {
 				//Up
 				string upPos = m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ];
 				if (isPlayer(upPos)) {
-					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ));
+					DeadPlayerText(m_players[getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)]);
 
 					m_players[getPlayer(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)].alive = false;
 					m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
@@ -421,7 +453,7 @@ void BombTimer() {
 				else if (isPwrUp(upPos))
 				{
 					m_foreground[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
-					cout << "PowerUp found!";
+					cout << "PowerUp found!" << endl;
 				}
 				else if (canBreakBlock(m_players[i].bombs[j].posX - 1, m_players[i].bombs[j].posZ)) {
 					m_objects[m_players[i].bombs[j].posX - 1][m_players[i].bombs[j].posZ] = "0";
@@ -430,7 +462,7 @@ void BombTimer() {
 				//Left
 				string leftPos = m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ-1];
 				if (isPlayer(leftPos)) {
-					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1));
+					DeadPlayerText(m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)]);
 
 					m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)].alive = false;
 					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
@@ -438,7 +470,7 @@ void BombTimer() {
 				else if (isPwrUp(leftPos))
 				{
 					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
-					cout << "PowerUp found!";
+					cout << "PowerUp found!" << endl;
 				}
 				else if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ - 1)) {
 					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ - 1] = "0";
@@ -447,7 +479,7 @@ void BombTimer() {
 				//Right
 				string rightPos = m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1];
 				if (isPlayer(rightPos)) {
-					DeadPlayerText(getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1));
+					DeadPlayerText(m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)]);
 
 					m_players[getPlayer(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)].alive = false;
 					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
@@ -455,7 +487,7 @@ void BombTimer() {
 				else if (isPwrUp(rightPos))
 				{
 					m_foreground[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
-					cout << "PowerUp found!";
+					cout << "PowerUp found!" << endl;
 				}
 				else if (canBreakBlock(m_players[i].bombs[j].posX, m_players[i].bombs[j].posZ + 1)) {
 					m_objects[m_players[i].bombs[j].posX][m_players[i].bombs[j].posZ + 1] = "0";
@@ -469,6 +501,15 @@ void BombTimer() {
 				cout << "BOOM!" << endl;
 			}
 		}
+	}
+}
+void PowerUpTimer() {
+	for (int i = 0; i < m_players.size(); i++)
+	{
+		m_players[i].pwrUp.time--;
+		if (m_players[i].pwrUp.time > 0.0f) { m_players[i].max_bombs = 3; }
+		else { m_players[i].max_bombs = 2; }
+		cout << m_players[0].max_bombs << endl;
 	}
 }
 void WinCondition() {
@@ -516,7 +557,9 @@ int main(void) {
 
 		BombPlacement(KEY_RIGHT_CONTROL, 0);
 		BombPlacement(KEY_SPACE, 1);
+
 		BombTimer();
+		PowerUpTimer();
 
 		if (isAlive(0)) { PlayerMovement(KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, 0); }
 		if (isAlive(1)) { PlayerMovement(KEY_W, KEY_S, KEY_D, KEY_A, 1); }
