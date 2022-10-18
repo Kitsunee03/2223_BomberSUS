@@ -1,5 +1,6 @@
-SUS;0.2;;
+SUS;0.5;;
 TITLE;BomberSUS;;
+MUSIC;archivo.ogg;;
 TEXTURES;4;;
 C;verde_claro.png;;
 V;verde_oscuro.png;;

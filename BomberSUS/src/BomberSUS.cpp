@@ -17,7 +17,7 @@ string m_title = "none :'(";
 int m_texturesNum = 0;
 map<string, string> m_textures;
 map<string, Texture2D> m_textures2D;
-Music m_bgMusic;
+Sound m_bgMusic;
 bool GameOver;
 string m_winner = "";
 
@@ -140,8 +140,9 @@ void ImportFile() {
 		}
 		//Set Music
 		getline(file, line, ';');
-		// TO DO
-		//cout << "BGMusic: " << MUSIC PATH << endl;
+		const char* MUSIC_PATH = line.c_str();
+		m_bgMusic = LoadSound(MUSIC_PATH);
+		cout << "BGMusic path: " << MUSIC_PATH << endl;
 		getline(file, line); // End Line
 	}
 
@@ -509,7 +510,6 @@ void PowerUpTimer() {
 		m_players[i].pwrUp.time--;
 		if (m_players[i].pwrUp.time > 0.0f) { m_players[i].max_bombs = 3; }
 		else { m_players[i].max_bombs = 2; }
-		cout << m_players[0].max_bombs << endl;
 	}
 }
 void WinCondition() {
@@ -523,6 +523,7 @@ void WinCondition() {
 }
 
 int main(void) {
+	InitAudioDevice();
 	ImportFile();
 
 	// Initialization
@@ -554,6 +555,9 @@ int main(void) {
 	{
 		//Update
 		if (!GameOver) { WinCondition(); }
+		if (!IsSoundPlaying(m_bgMusic)) {	//BGM
+			PlaySound(m_bgMusic);
+		}
 
 		BombPlacement(KEY_RIGHT_CONTROL, 0);
 		BombPlacement(KEY_SPACE, 1);
@@ -591,7 +595,10 @@ int main(void) {
 		EndDrawing();
 	}
 
+	UnloadSound(m_bgMusic);
+
 	// De-Initialization
+	CloseAudioDevice();
 	CloseWindow();
 	return 0;
 }
