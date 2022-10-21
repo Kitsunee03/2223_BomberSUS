@@ -11,7 +11,7 @@
 using namespace std;
 
 //Game Vars 
-const float m_version = 0.5f;
+const float m_version = 1.0f;
 float m_gameVersion = 0.0f;
 string m_title = "none :'(";
 int m_texturesNum = 0;
@@ -34,6 +34,7 @@ float m_offsetX, m_offsetZ;
 
 Vector3 m_drawPosition = { 0.0f, 0.0f, 0.0f };
 float cubeSize[3] = { 1.0f, 1.0f, 1.0f }; //Width Height Length
+float m_cameraHeight = 10.0f;
 
 //Bombs
 struct Bombs
@@ -130,8 +131,8 @@ void ImportFile() {
 	cout << "Game Title: " << m_title << endl;
 	getline(file, line); // End Line
 
+	//Music Control
 	if (m_gameVersion >= 0.5f) {
-		//Music Control
 		getline(file, line, ';');
 		if (line != "MUSIC") {
 			cout << "\n\nERROR <5>: Music missing!\n" << endl;
@@ -146,12 +147,27 @@ void ImportFile() {
 		getline(file, line); // End Line
 	}
 
+	//Camera Height Control
+	if (m_gameVersion >= 1.0f) {
+		getline(file, line, ';');
+		if (line != "CAMERA_HEIGHT") {
+			cout << "\n\nERROR <6>: Camera Height missing!\n" << endl;
+			system("pause");
+			exit(6);
+		}
+		//Set Camera Height
+		getline(file, line, ';');
+		m_cameraHeight = stof(line);
+		cout << "Camera Height: " << line << endl;
+		getline(file, line); // End Line
+	}
+
 	//Textures Control
 	getline(file, line, ';');
 	if (line != "TEXTURES") {
-		cout << "\n\nERROR <6>: Textures missing!\n" << endl;
+		cout << "\n\nERROR <7>: Textures missing!\n" << endl;
 		system("pause");
-		exit(6);
+		exit(7);
 	}
 	//Set Textures number
 	getline(file, line, ';');
@@ -174,9 +190,9 @@ void ImportFile() {
 	//Background Control
 	getline(file, line, ';');
 	if (line != "BACKGROUND") {
-		cout << "\n\nERROR <7>: Background missing!\n" << endl;
+		cout << "\n\nERROR <8>: Background missing!\n" << endl;
 		system("pause");
-		exit(7);
+		exit(8);
 	}
 	//Set Backrgound size
 	getline(file, line, ';');
@@ -203,9 +219,9 @@ void ImportFile() {
 	//Foreground Control
 	getline(file, line, ';');
 	if (line != "FOREGROUND") {
-		cout << "\n\nERROR <8>: Foreground missing!\n" << endl;
+		cout << "\n\nERROR <9>: Foreground missing!\n" << endl;
 		system("pause");
-		exit(8);
+		exit(9);
 	}
 	//Set Forergound size
 	getline(file, line, ';');
@@ -232,9 +248,9 @@ void ImportFile() {
 	//Objects Control
 	getline(file, line, ';');
 	if (line != "OBJECTS") {
-		cout << "\n\nERROR <9>: Objects missing!\n" << endl;
+		cout << "\n\nERROR <10>: Objects missing!\n" << endl;
 		system("pause");
-		exit(9);
+		exit(10);
 	}
 	//Set Objects size
 	getline(file, line, ';');
@@ -546,7 +562,7 @@ int main(void) {
 
 	//Define the camera to look into our 3d world
 	Camera3D camera = { 0 };
-	camera.position = { 0.0f, 10.0f, 2.0f };	//Camera position
+	camera.position = { 0.0f, m_cameraHeight, 2.0f };	//Camera position
 	camera.target = { 0.0f, 0.0f, 0.0f };		//Camera looking at point
 	camera.up = { 0.0f, 1.0f, 0.0f };			//Camera up vector (rotation towards target)
 	camera.fovy = 45.0f;						//Camera field-of-view Y
