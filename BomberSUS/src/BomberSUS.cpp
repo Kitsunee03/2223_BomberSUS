@@ -112,7 +112,7 @@ void ImportFile() {
 	getline(file, line, ';');
 	m_gameVersion = stof(line);
 	if (stof(line) < m_version) {
-		cout << "\n\nWARNING <3>: Old version detected!, upgrade to " << m_version <<" to enjoy the newest features :)" << "\n" << endl;
+		cout << "\n\nWARNING <3>: Old version detected!, upgrade to [v" << m_version <<"] to enjoy the newest features :)" << "\n" << endl;
 		system("pause");
 	}
 	cout << "Version: " << line << endl;
@@ -560,13 +560,13 @@ int main(void) {
 	LoadTextures();
 	Initplayers();
 
-	//Define the camera to look into our 3d world
+	//Camera
 	Camera3D camera = { 0 };
-	camera.position = { 0.0f, m_cameraHeight, 2.0f };	//Camera position
-	camera.target = { 0.0f, 0.0f, 0.0f };		//Camera looking at point
-	camera.up = { 0.0f, 1.0f, 0.0f };			//Camera up vector (rotation towards target)
-	camera.fovy = 45.0f;						//Camera field-of-view Y
-	camera.projection = CAMERA_PERSPECTIVE;     //Camera mode type
+	camera.position = { 0.0f, m_cameraHeight, 2.0f };	//Camera pos
+	camera.target = { 0.0f, 0.0f, 0.0f };				//Camera targert
+	camera.up = { 0.0f, 1.0f, 0.0f };				//Camera rotation towards target
+	camera.fovy = 45.0f;							//Camera field-of-view Y
+	camera.projection = CAMERA_PERSPECTIVE;			//Camera mode type
 
 	SetTargetFPS(60);               //Set our game to run at 60 frames-per-second
 
@@ -608,8 +608,10 @@ int main(void) {
 		}
 		else {
 			DrawText("Game Over!", screenWidth / 2.85f, screenHeight / 3.0f, 80, RED);
-			string winText = "Winner is: "+m_winner;
+			string winText = "Winner is: " + m_winner;
 			DrawText(winText.c_str(), screenWidth / 2.5f, screenHeight / 2.0f, 50, RED);
+			DrawText("Press [ENTER] to exit", screenWidth / 2.65f, screenHeight / 1.6f, 30, BLACK);
+			if (IsKeyPressed(KEY_ENTER)) { exit(0); }
 		}
 
 		EndDrawing();
